@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Phish Patrol</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a mail client. Inbox list on the left, the open message in the middle, a verdict bar under it. */
+:root {
+  --bg: #EDF3F4; --surface: #FFFFFF; --surface-2: #F4F8F9; --ink: #0F2430; --muted: #5A6E78; --line: #D4E0E3;
+  --accent: #0B7A75; --accent-ink: #FFFFFF; --accent-soft: #DCF1EF;
+  --flag: #D93F25; --flag-soft: #FDE7E2; --good: #1C8549; --good-soft: #E0F3E7; --gold: #A56F00; --gold-soft: #FFF3D1;
+  --f-display: 'Bricolage Grotesque', 'Atkinson Hyperlegible', system-ui, sans-serif;
+  --f-body: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+  --shadow: 0 1px 2px rgba(15,36,48,.06), 0 10px 30px -14px rgba(15,36,48,.25);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0A171E; --surface: #11222B; --surface-2: #172B35; --ink: #E4EFF1; --muted: #93A9B2; --line: #24404B;
+  --accent: #3CC2B8; --accent-ink: #062320; --accent-soft: #123838;
+  --flag: #FF7A5E; --flag-soft: #3A1D17; --good: #4ACB82; --good-soft: #12331F; --gold: #F2C14E; --gold-soft: #3A2E0E;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px -14px rgba(0,0,0,.6); color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0A171E; --surface: #11222B; --surface-2: #172B35; --ink: #E4EFF1; --muted: #93A9B2; --line: #24404B;
+  --accent: #3CC2B8; --accent-ink: #062320; --accent-soft: #123838;
+  --flag: #FF7A5E; --flag-soft: #3A1D17; --good: #4ACB82; --good-soft: #12331F; --gold: #F2C14E; --gold-soft: #3A2E0E;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px -14px rgba(0,0,0,.6); color-scheme: dark; }
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--f-body); }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { margin: 0; font-family: var(--f-display); text-wrap: balance; }
+.app { min-height: 100%; padding-inline: 16px; padding-block: 16px; max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.label { font: 700 12px/1 var(--f-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.mono { font-family: var(--f-mono); }
+
+.btn { border: 1.5px solid var(--line); background: var(--surface); padding: 11px 18px; border-radius: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; transition: transform .12s, border-color .15s, background .15s; }
+.btn:hover { transform: translateY(-1px); border-color: var(--accent); }
+.btn.main { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.report { background: var(--flag); border-color: var(--flag); color: #fff; }
+.btn.safe { background: var(--good); border-color: var(--good); color: #fff; }
+.btn.big { font-size: 18px; padding: 15px 26px; border-radius: 14px; }
+.btn[disabled] { opacity: .45; pointer-events: none; }
+
+/* start screen */
+.start { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 32px; align-items: center; padding-block: 24px; }
+.start h1 { font-size: clamp(48px, 8vw, 96px); line-height: .9; font-weight: 800; letter-spacing: -.02em; }
+.start h1 span { color: var(--flag); }
+.start .lede { font-size: 19px; max-width: 46ch; color: var(--muted); margin: 16px 0 24px; }
+.how { display: grid; gap: 12px; margin-bottom: 26px; }
+.how div { display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; }
+.how b.n { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-family: var(--f-display); }
+.join { display: flex; gap: 10px; flex-wrap: wrap; }
+.join input { flex: 1 1 220px; min-width: 0; padding: 13px 15px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); }
+.join input:focus { outline: none; border-color: var(--accent); }
+.preview { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); padding: 20px; display: grid; gap: 12px; transform: rotate(-1.5deg); }
+.preview .row { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); }
+.preview .row small { color: var(--muted); display: block; }
+.mark { display: inline-block; padding: 1px 6px; border-radius: 6px; background: var(--flag-soft); color: var(--flag); font-weight: 700; }
+.err { color: var(--flag); font-weight: 700; min-height: 1.4em; font-size: 14px; }
+
+/* game bar */
+.bar { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 16px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; }
+.bar .brand { font: 800 20px/1 var(--f-display); }
+.bar .brand span { color: var(--flag); }
+.bar .stat { display: grid; gap: 2px; }
+.bar .stat b { font: 800 22px/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.bar .spacer { flex: 1; }
+.pop { animation: pop .45s ease; }
+@keyframes pop { 40% { transform: scale(1.2); color: var(--accent); } }
+.timer b { color: var(--ink); }
+.timer.low b { color: var(--flag); }
+.pips { display: flex; gap: 5px; }
+.pips i { width: 12px; height: 12px; border-radius: 4px; background: var(--line); }
+.pips i.ok { background: var(--good); } .pips i.no { background: var(--flag); } .pips i.now { background: var(--accent); }
+
+/* mail client */
+.client { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 14px; flex: 1; min-height: 0; }
+.inbox { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 8px; display: grid; align-content: start; gap: 4px; }
+.inbox .item { text-align: left; border: 0; background: transparent; padding: 10px 12px; border-radius: 10px; display: grid; gap: 2px; border-left: 3px solid transparent; }
+.inbox .item small { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inbox .item b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14.5px; }
+.inbox .item.now { background: var(--accent-soft); border-left-color: var(--accent); }
+.inbox .item.ok { border-left-color: var(--good); opacity: .75; }
+.inbox .item.no { border-left-color: var(--flag); opacity: .75; }
+.inbox .item.later { opacity: .45; }
+.reader { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); display: grid; grid-template-rows: auto 1fr auto; min-width: 0; overflow: hidden; }
+.tip { padding: 10px 18px; background: var(--surface-2); border-bottom: 1px solid var(--line); font-size: 14px; color: var(--muted); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.msg { padding: 20px 22px; display: grid; gap: 14px; align-content: start; min-width: 0; }
+.part { border: 1.5px dashed transparent; border-radius: 10px; padding: 6px 9px; margin: -6px -9px; cursor: pointer; transition: background .15s, border-color .15s; position: relative; min-width: 0; overflow-wrap: anywhere; text-align: left; background: transparent; display: block; width: calc(100% + 18px); }
+.part:hover { border-color: var(--line); background: var(--surface-2); }
+.part.flagged { border-color: var(--flag); background: var(--flag-soft); }
+.part.flagged::after { content: 'Flagged'; position: absolute; top: -9px; right: 8px; background: var(--flag); color: #fff; font: 700 10.5px/1 var(--f-body); letter-spacing: .08em; text-transform: uppercase; padding: 3px 6px; border-radius: 5px; }
+.part.real { border-style: solid; border-color: var(--flag); background: var(--flag-soft); }
+.part.missed { border-style: solid; border-color: var(--gold); background: var(--gold-soft); }
+.part.wrongflag { border-style: solid; border-color: var(--muted); }
+.hdr { display: grid; gap: 6px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.hdr .subject { font: 800 clamp(20px, 2.4vw, 26px)/1.2 var(--f-display); }
+.hdr .line { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 8px; font-size: 14.5px; }
+.hdr .line span:first-child { color: var(--muted); }
+.addr { font-family: var(--f-mono); font-size: 13.5px; }
+.body p { margin: 0 0 10px; max-width: 68ch; }
+.linkbtn { display: inline-block; padding: 10px 18px; border-radius: 10px; background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.attach { display: inline-flex; align-items: center; gap: 10px; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); font-family: var(--f-mono); font-size: 13.5px; }
+.status { padding: 6px 18px; font: 12.5px/1.4 var(--f-mono); color: var(--muted); background: var(--surface-2); border-top: 1px solid var(--line); min-height: 28px; overflow-wrap: anywhere; }
+
+.verdict { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 14px 18px; border-top: 1px solid var(--line); background: var(--surface); }
+.verdict .count { color: var(--muted); font-size: 14px; }
+.feedback { padding: 16px 18px; border-top: 1px solid var(--line); display: grid; gap: 12px; animation: rise .3s ease; }
+@keyframes rise { from { transform: translateY(8px); opacity: 0; } }
+.result { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.result h3 { font-size: 22px; }
+.result.right h3 { color: var(--good); } .result.wrong h3 { color: var(--flag); }
+.pts { font: 800 18px/1 var(--f-display); padding: 6px 10px; border-radius: 10px; background: var(--good-soft); color: var(--good); }
+.pts.neg { background: var(--flag-soft); color: var(--flag); }
+.why { display: grid; gap: 8px; }
+.why div { padding: 10px 12px; border-radius: 10px; background: var(--surface-2); font-size: 14.5px; border-left: 4px solid var(--flag); }
+.why div.trust { border-left-color: var(--good); }
+.why div.miss { border-left-color: var(--gold); }
+.why b { display: block; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+/* results */
+.results { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 24px; box-shadow: var(--shadow); display: grid; gap: 16px; }
+.rank { font: 800 clamp(36px, 5vw, 56px)/1 var(--f-display); }
+.rank span { color: var(--accent); }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.tile { padding: 14px; border-radius: 12px; background: var(--surface-2); }
+.tile b { display: block; font: 800 28px/1.1 var(--f-display); font-variant-numeric: tabular-nums; }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th { text-align: left; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 8px; }
+td { padding: 10px 8px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+tr.me td { background: var(--accent-soft); }
+.review { display: grid; gap: 6px; }
+.review div { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); font-size: 14.5px; }
+.review .ok { color: var(--good); font-weight: 700; } .review .no { color: var(--flag); font-weight: 700; }
+.row-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 12px 18px; border-radius: 12px; font-weight: 700; z-index: 20; animation: rise .25s ease; }
+
+@media (max-width: 860px) {
+  .start, .results { grid-template-columns: 1fr; }
+  .preview { transform: none; }
+  .client { grid-template-columns: 1fr; }
+  .inbox { grid-auto-flow: column; grid-auto-columns: 180px; overflow-x: auto; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script>
+/* ===== Phish Patrol — a phishing-spotting game. Every sender, domain and link is fictional (.example). ===== */
+
+/* --- The emails. "flags" lists the parts that are warning signs and why. Safe emails have none. --- */
+const EMAILS = [
+  { id: 'acct', phish: true, fromName: 'School Accounts Team', from: 'no-reply@northbridge-accounts.example', replyTo: 'helpdesk.verify22@freemail.example',
+    subject: 'URGENT: Your school account will be deleted today', date: 'Today, 07:42', greeting: 'Dear student,',
+    body: ['We detected unusual activity on your account. To keep your access you must confirm your username and password within 2 hours.', 'If you do not confirm, your files and grades will be permanently removed.'],
+    link: { text: 'Confirm my account', url: 'http://northbridge-login.verify-now.example/confirm' }, attach: null, sign: 'IT Security',
+    flags: { from: 'The address is not the real school domain (northbridge.school.example). It only contains the school name.', replyTo: 'Replies go to a free personal mailbox, not the school.', subject: 'Threats and a short deadline push you to act before you think.', body: 'No real IT team asks you to send or confirm your password.', link: 'The link uses plain http and a look-alike domain, not the school website.' },
+    tip: 'Check the sender address, not just the display name.' },
+  { id: 'library', phish: false, fromName: 'Northbridge Library', from: 'library@northbridge.school.example', replyTo: 'library@northbridge.school.example',
+    subject: 'Reminder: "The Martian" is due Thursday', date: 'Today, 08:15', greeting: 'Hi Sara,',
+    body: ['Just a reminder that your copy of "The Martian" is due back this Thursday.', 'You can renew it once from your library account, or drop it in the returns box at the front desk.'],
+    link: { text: 'View my library account', url: 'https://library.northbridge.school.example/account' }, attach: null, sign: 'Ms. Huda, School Librarian',
+    trust: 'Sender, reply address and link all use the real school domain, it greets you by name, and it asks for nothing sensitive.' },
+  { id: 'prize', phish: true, fromName: 'GameZone Rewards', from: 'rewards@gamezone-prizes.example', replyTo: 'rewards@gamezone-prizes.example',
+    subject: 'Congratulations!! You won 10,000 free coins', date: 'Yesterday, 21:03', greeting: 'Hey lucky winner,',
+    body: ['You have been randomly selected as our weekly winner! Claim your 10,000 coins before midnight.', 'Just log in with your game account and enter your parent\'s card number to verify your age.'],
+    link: { text: 'Claim my coins now', url: 'http://gamezone.claim-reward.example/login' }, attach: { name: 'Claim_Instructions.pdf.exe', size: '1.2 MB' }, sign: 'The GameZone Team',
+    flags: { subject: 'A prize you never entered for is a classic bait.', greeting: 'A generic greeting means it was sent to many people.', body: 'Asking for a card number to "verify age" is a way to steal payment details.', link: 'The real domain here is claim-reward.example. The brand name is only a decoration at the start.', attach: 'A double extension (.pdf.exe) hides a program behind a document name.' },
+    tip: 'Ask: did I actually enter a competition?' },
+  { id: 'ict', phish: false, fromName: 'Mr. Khalid (ICT)', from: 'k.mansour@northbridge.school.example', replyTo: 'k.mansour@northbridge.school.example',
+    subject: 'Python project: rubric and deadline', date: 'Yesterday, 14:30', greeting: 'Hello Grade 11,',
+    body: ['The rubric for the Python project is attached. Projects are due on October 15.', 'Please upload your .py file and a short demo video to the class page. Bring any questions to Tuesday\'s lesson.'],
+    link: { text: 'Open the class page', url: 'https://learn.northbridge.school.example/ict11' }, attach: { name: 'Python_Project_Rubric.pdf', size: '184 KB' }, sign: 'Mr. Khalid Mansour, ICT Department',
+    trust: 'It matches what you expect from your teacher, uses the school domain, and the attachment is an ordinary PDF.' },
+  { id: 'principal', phish: true, fromName: 'Dr. Amal (Principal)', from: 'principal.amal.office@freemail.example', replyTo: 'principal.amal.office@freemail.example',
+    subject: 'Quick favour — please keep this private', date: 'Today, 06:58', greeting: 'Hi,',
+    body: ['I am in a meeting and can\'t talk. I need you to buy four gift cards for a staff surprise and send me the codes by email.', 'Please don\'t tell anyone, it\'s a surprise. I will pay you back tomorrow.'],
+    link: null, attach: null, sign: 'Sent from my phone',
+    flags: { from: 'A principal would use the school address, not a free personal mailbox.', subject: 'Asking for secrecy stops you from checking with anyone else.', body: 'Gift-card codes are like cash. This is a common impersonation trick (social engineering).' },
+    tip: 'Would this person really ask you this by email?' },
+  { id: 'parcel', phish: true, fromName: 'ParcelGo Delivery', from: 'notice@parcelgo-redelivery.example', replyTo: 'notice@parcelgo-redelivery.example',
+    subject: 'Delivery failed: pay SAR 2.50 to reschedule', date: 'Today, 09:20', greeting: 'Dear customer,',
+    body: ['We could not deliver your parcel because of an unpaid fee of SAR 2.50.', 'Pay within 24 hours or your parcel will be returned to the sender.'],
+    link: { text: 'Pay fee and reschedule', url: 'http://parcelgo-pay.secure-fee.example/pay' }, attach: null, sign: 'ParcelGo Customer Care',
+    flags: { greeting: 'A real delivery company knows your name and tracking number.', body: 'A tiny fee makes people pay without thinking. The real goal is your card details.', link: 'The link goes to secure-fee.example, a different site from the sender.' },
+    tip: 'Were you expecting a parcel? Does it include a tracking number?' },
+  { id: 'password', phish: false, fromName: 'ShopSphere', from: 'security@shopsphere.example', replyTo: 'support@shopsphere.example',
+    subject: 'Your ShopSphere password was changed', date: 'Today, 10:02', greeting: 'Hi Omar,',
+    body: ['The password for your ShopSphere account was changed today at 09:58.', 'If you made this change, you don\'t need to do anything. If you didn\'t, open the ShopSphere app or type shopsphere.example into your browser yourself and reset your password.'],
+    link: null, attach: null, sign: 'ShopSphere Account Security',
+    trust: 'It contains no link to log in, tells you to visit the site yourself, and asks for nothing. That is how genuine security alerts behave.' },
+  { id: 'share', phish: true, fromName: 'CloudDrive', from: 'share@clouddrive-docs.example', replyTo: 'share@clouddrive-docs.example',
+    subject: 'Grades_Final_2026.xlsx was shared with you', date: 'Today, 11:47', greeting: 'Hello,',
+    body: ['A file has been shared with you: Grades_Final_2026.xlsx', 'Sign in with your school email and password to view it. This link expires in 1 hour.'],
+    link: { text: 'Open document', url: 'https://cl0uddrive.example/signin' }, attach: null, sign: 'CloudDrive',
+    flags: { subject: 'A tempting file name ("final grades") is chosen to make you curious.', body: 'The time limit rushes you, and it does not say who shared the file.', link: 'Look closely: cl0uddrive uses a zero instead of the letter o. This is a look-alike domain.' },
+    tip: 'Read the link address letter by letter.' },
+  { id: 'coach', phish: false, fromName: 'Coach Tariq', from: 't.saleh@northbridge.school.example', replyTo: 't.saleh@northbridge.school.example',
+    subject: 'Basketball practice moved to Wednesday', date: 'Yesterday, 16:10', greeting: 'Hi team,',
+    body: ['Practice this week is moved from Tuesday to Wednesday at 3:30 pm because the gym is being used for exams.', 'Bring water and your training kit. See you there.'],
+    link: null, attach: null, sign: 'Coach Tariq',
+    trust: 'Expected information from a known person on the school domain. No links, no attachments, no requests.' },
+  { id: 'mailbox', phish: true, fromName: 'IT Helpdesk', from: 'it-support@northbridge-school.example', replyTo: 'it-support@northbridge-school.example',
+    subject: 'Your mailbox is 98% full', date: 'Today, 12:15', greeting: 'Dear user,',
+    body: ['Your mailbox is almost full and you will stop receiving messages.', 'Open the attached form and sign in to increase your storage for free.'],
+    link: null, attach: { name: 'Mailbox_Upgrade_Form.html', size: '6 KB' }, sign: 'IT Helpdesk Team',
+    flags: { from: 'Look closely: northbridge-school.example (with a dash) is not the real northbridge.school.example.', greeting: '"Dear user" means the sender doesn\'t know who you are.', attach: 'An .html attachment that asks you to sign in is a fake login page.' },
+    tip: 'Compare the domain with your real school address.' },
+  { id: 'bank', phish: false, fromName: 'SkyBank', from: 'statements@skybank.example', replyTo: 'no-reply@skybank.example',
+    subject: 'Your September statement is ready', date: 'Oct 1, 09:00', greeting: 'Dear Faisal Al-Harbi,',
+    body: ['Your account statement for September is now available.', 'To view it, sign in to the SkyBank app as usual. We will never ask for your password, PIN or one-time code by email.'],
+    link: null, attach: null, sign: 'SkyBank Customer Service',
+    trust: 'It uses your full name, sends you to the app you already use, and reminds you that the bank never asks for passwords.' },
+  { id: 'friend', phish: true, fromName: 'Lina Q.', from: 'lina.q2009@freemail.example', replyTo: 'lina.q2009@freemail.example',
+    subject: 'omg is this you in this video??', date: 'Today, 13:01', greeting: 'hey',
+    body: ['haha someone posted a video of you, look before they delete it'],
+    link: { text: 'watch video', url: 'http://vid-share.example/x9k2?login=required' }, attach: null, sign: '',
+    flags: { subject: 'Shock and curiosity are used to make you click fast.', body: 'Short and vague. Your friend\'s account may have been hacked and is now sending this to everyone.', link: 'The link asks you to log in before you can watch, which is how passwords get stolen.' },
+    tip: 'If a friend sends something strange, check with them another way first.' },
+];
+const PARTS = { from: 'Sender', replyTo: 'Reply-To', subject: 'Subject', greeting: 'Greeting', body: 'Message', link: 'Link', attach: 'Attachment' };
+const ROUND = 8;            // emails per game
+const GAME_SECONDS = 6 * 60;
+const SCORE = { right: 100, flag: 25, wrongFlag: -10, wrong: -50, streak: 50 };
+
+/* --- small helpers --- */
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const memo = {}; // used when the browser blocks storage, so the leaderboard still works for this visit
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); if (v) return JSON.parse(v); } catch (e) { /* storage unavailable */ } return k in memo ? JSON.parse(memo[k]) : d; },
+  set(k, v) { memo[k] = JSON.stringify(v); try { localStorage.setItem(k, memo[k]); } catch (e) { /* storage unavailable */ } },
+};
+const fmt = (s) => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 1600); }
+
+/* --- game state --- */
+let G = null;
+let timerId = null;
+
+function newGame(name) {
+  const phish = shuffle(EMAILS.filter((e) => e.phish)).slice(0, 5);
+  const safe = shuffle(EMAILS.filter((e) => !e.phish)).slice(0, ROUND - 5);
+  G = { name, list: shuffle(phish.concat(safe)), i: 0, score: 0, streak: 0, flags: new Set(), answered: false, results: [], flagsFound: 0, flagsTotal: 0, left: GAME_SECONDS, started: Date.now() };
+  clearInterval(timerId);
+  timerId = setInterval(tick, 1000);
+  renderGame();
+}
+function tick() {
+  if (!G) return;
+  G.left = Math.max(0, GAME_SECONDS - Math.floor((Date.now() - G.started) / 1000));
+  const t = $('#timer'); if (t) { t.querySelector('b').textContent = fmt(G.left); t.classList.toggle('low', G.left <= 60); }
+  if (G.left === 60) toast('One minute left');
+  if (G.left <= 0) finish();
+}
+
+/* --- start screen --- */
+function renderStart() {
+  clearInterval(timerId);
+  const last = store.get('pp:name', '');
+  $('#app').innerHTML = `
+  <section class="start">
+    <div>
+      <p class="label">Cybersecurity Week</p>
+      <h1>Phish <span>Patrol</span></h1>
+      <p class="lede">Eight emails just landed in a student's inbox. Some are real. Some are traps. You have six minutes to sort them.</p>
+      <div class="how">
+        <div><b class="n">1</b><span>Click any part of an email that looks suspicious to flag it: the sender, the link, the attachment, the wording.</span></div>
+        <div><b class="n">2</b><span>Decide: <strong>Report phishing</strong> or <strong>Mark as safe</strong>.</span></div>
+        <div><b class="n">3</b><span>See what you caught and what you missed. Correct calls and correct flags earn points.</span></div>
+      </div>
+      <form class="join" id="join">
+        <input id="name" maxlength="30" placeholder="Your name" value="${esc(last)}" autocomplete="off" aria-label="Your name">
+        <button class="btn main big" type="submit">Start patrol →</button>
+      </form>
+      <p class="err" id="err"></p>
+    </div>
+    <div class="preview" aria-hidden="true">
+      <span class="label">Example</span>
+      <div class="row"><div><b>School Accounts Team</b><small class="mono">no-reply@<span class="mark">northbridge-accounts</span>.example</small></div><small>07:42</small></div>
+      <div class="row"><div><b>Your account will be deleted <span class="mark">today</span></b><small>Confirm your username and <span class="mark">password</span> within 2 hours…</small></div></div>
+      <div class="row"><div><b>Link points to</b><small class="mono"><span class="mark">http://</span>northbridge-login.<span class="mark">verify-now.example</span></small></div></div>
+    </div>
+  </section>
+  ${leaderboardHTML()}`;
+  $('#join').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const n = $('#name').value.trim();
+    if (!n) { $('#err').textContent = 'Type your name to start.'; $('#name').focus(); return; }
+    store.set('pp:name', n); newGame(n);
+  });
+  bindReset();
+}
+
+/* --- game screen --- */
+function renderGame() {
+  const e = G.list[G.i];
+  const pips = G.list.map((_, k) => `<i class="${k < G.results.length ? (G.results[k].right ? 'ok' : 'no') : k === G.i ? 'now' : ''}"></i>`).join('');
+  const inbox = G.list.map((m, k) => `<div class="item ${k === G.i ? 'now' : k < G.results.length ? (G.results[k].right ? 'ok' : 'no') : 'later'}"><b>${esc(m.fromName)}</b><small>${esc(m.subject)}</small></div>`).join('');
+  $('#app').innerHTML = `
+  <header class="bar">
+    <div class="brand">Phish <span>Patrol</span></div>
+    <div class="stat"><span class="label">Analyst</span><b style="font-size:16px">${esc(G.name)}</b></div>
+    <div class="spacer"></div>
+    <div class="pips" aria-label="Progress">${pips}</div>
+    <div class="stat"><span class="label">Email</span><b>${G.i + 1}/${G.list.length}</b></div>
+    <div class="stat"><span class="label">Score</span><b id="score">${G.score}</b></div>
+    <div class="stat timer ${G.left <= 60 ? 'low' : ''}" id="timer"><span class="label">Time</span><b>${fmt(G.left)}</b></div>
+  </header>
+  <main class="client">
+    <nav class="inbox" aria-label="Inbox">${inbox}</nav>
+    <article class="reader">
+      <div class="tip"><b>Inspect.</b> Click the parts that look suspicious. Hover or focus the link to see where it really goes.</div>
+      <div class="msg" id="msg">${messageHTML(e)}</div>
+      <div id="foot">${verdictHTML()}</div>
+    </article>
+  </main>`;
+  bindMessage();
+}
+function partBtn(id, inner, extra) { return `<button type="button" class="part ${extra || ''}" data-part="${id}">${inner}</button>`; }
+function messageHTML(e) {
+  return `
+  <div class="hdr">
+    ${partBtn('subject', `<span class="subject">${esc(e.subject)}</span>`)}
+    ${partBtn('from', `<div class="line"><span>From</span><span><b>${esc(e.fromName)}</b> <span class="addr">&lt;${esc(e.from)}&gt;</span></span></div>`)}
+    ${partBtn('replyTo', `<div class="line"><span>Reply-To</span><span class="addr">${esc(e.replyTo)}</span></div>`)}
+    <div class="line" style="font-size:14px"><span class="label" style="letter-spacing:.06em">Received</span><span>${esc(e.date)}</span></div>
+  </div>
+  <div class="body">
+    ${partBtn('greeting', `<p>${esc(e.greeting)}</p>`)}
+    ${partBtn('body', e.body.map((p) => `<p>${esc(p)}</p>`).join(''))}
+    ${e.link ? partBtn('link', `<span class="linkbtn">${esc(e.link.text)}</span>`, 'linkpart') : ''}
+    ${e.attach ? partBtn('attach', `<span class="attach">Attachment: ${esc(e.attach.name)} · ${esc(e.attach.size)}</span>`) : ''}
+    ${e.sign ? `<p style="margin-top:14px;color:var(--muted)">${esc(e.sign)}</p>` : ''}
+  </div>
+  <div class="status" id="status" aria-live="polite">${e.link ? 'Hover over the link to preview its address' : ' '}</div>`;
+}
+function verdictHTML() {
+  return `<div class="verdict">
+    <span class="count" id="count">${G.flags.size} part${G.flags.size === 1 ? '' : 's'} flagged</span>
+    <div class="row-actions">
+      <button class="btn safe" id="safe">Mark as safe</button>
+      <button class="btn report" id="report">Report phishing</button>
+    </div></div>`;
+}
+function bindMessage() {
+  const e = G.list[G.i];
+  document.querySelectorAll('.part').forEach((el) => {
+    el.addEventListener('click', () => {
+      if (G.answered) return;
+      const p = el.dataset.part;
+      if (G.flags.has(p)) G.flags.delete(p); else G.flags.add(p);
+      el.classList.toggle('flagged', G.flags.has(p));
+      $('#count').textContent = G.flags.size + ' part' + (G.flags.size === 1 ? '' : 's') + ' flagged';
+    });
+  });
+  const lp = document.querySelector('.linkpart');
+  if (lp) {
+    const show = () => { $('#status').textContent = 'Link goes to: ' + e.link.url; };
+    lp.addEventListener('mouseenter', show); lp.addEventListener('focus', show);
+  }
+  $('#safe').addEventListener('click', () => answer(false));
+  $('#report').addEventListener('click', () => answer(true));
+}
+
+/* --- scoring an answer --- */
+function answer(saidPhish) {
+  if (G.answered) return;
+  G.answered = true;
+  const e = G.list[G.i];
+  const real = e.flags ? Object.keys(e.flags) : [];
+  const right = saidPhish === e.phish;
+  let pts = right ? SCORE.right : SCORE.wrong;
+  let found = 0, wrongFlags = 0;
+  G.flags.forEach((p) => { if (real.includes(p)) found++; else wrongFlags++; });
+  pts += found * SCORE.flag + wrongFlags * SCORE.wrongFlag;
+  G.streak = right ? G.streak + 1 : 0;
+  let bonus = 0;
+  if (right && G.streak > 0 && G.streak % 3 === 0) { bonus = SCORE.streak; pts += bonus; }
+  G.score = Math.max(0, G.score + pts);
+  G.flagsFound += found; G.flagsTotal += real.length;
+  G.results.push({ id: e.id, subject: e.subject, phish: e.phish, right, pts, found, total: real.length });
+
+  // mark the email parts
+  document.querySelectorAll('.part').forEach((el) => {
+    const p = el.dataset.part; el.classList.remove('flagged');
+    if (real.includes(p)) el.classList.add(G.flags.has(p) ? 'real' : 'missed');
+    else if (G.flags.has(p)) el.classList.add('wrongflag');
+  });
+  if (e.link) $('#status').textContent = 'Link goes to: ' + e.link.url;
+  const sc = $('#score'); sc.textContent = G.score; sc.classList.remove('pop'); void sc.offsetWidth; sc.classList.add('pop');
+
+  const notes = e.phish
+    ? real.map((p) => `<div class="${G.flags.has(p) ? '' : 'miss'}"><b>${PARTS[p]} · ${G.flags.has(p) ? 'you caught this' : 'missed'}</b>${esc(e.flags[p])}</div>`).join('')
+    : `<div class="trust"><b>Why it is safe</b>${esc(e.trust)}</div>`;
+  const wrongNotes = [...G.flags].filter((p) => !real.includes(p)).map((p) => `<div class="trust"><b>${PARTS[p]} · not a warning sign here</b>This part looks normal in this email.</div>`).join('');
+  $('#foot').innerHTML = `<div class="feedback">
+    <div class="result ${right ? 'right' : 'wrong'}">
+      <h3>${right ? (e.phish ? 'Phish caught' : 'Correct, it is safe') : (e.phish ? 'That was phishing' : 'That one was safe')}</h3>
+      <span class="pts ${pts < 0 ? 'neg' : ''}">${pts >= 0 ? '+' : ''}${pts}</span>
+      ${bonus ? `<span class="pts">Streak bonus +${bonus}</span>` : ''}
+      ${e.phish ? `<span class="count">${found} of ${real.length} warning signs flagged</span>` : ''}
+    </div>
+    <div class="why">${notes}${wrongNotes}</div>
+    ${e.tip && e.phish ? `<p style="margin:0;color:var(--muted)"><b>Remember:</b> ${esc(e.tip)}</p>` : ''}
+    <div class="legend"><span><i style="background:var(--flag)"></i>Warning sign you flagged</span><span><i style="background:var(--gold)"></i>Warning sign you missed</span></div>
+    <div class="row-actions"><button class="btn main" id="next">${G.i + 1 < G.list.length ? 'Next email →' : 'See results →'}</button></div>
+  </div>`;
+  $('#next').addEventListener('click', next);
+  $('#next').focus();
+}
+function next() {
+  G.i++; G.flags = new Set(); G.answered = false;
+  if (G.i >= G.list.length) finish(); else renderGame();
+}
+
+/* --- results --- */
+function rankFor(acc) { return acc >= 90 ? 'Phish Hunter' : acc >= 70 ? 'Sharp Analyst' : acc >= 50 ? 'Rookie Defender' : 'Needs More Patrol'; }
+function finish() {
+  if (!G || G.done) return;
+  G.done = true; clearInterval(timerId);
+  const correct = G.results.filter((r) => r.right).length;
+  const acc = G.results.length ? Math.round((correct / G.list.length) * 100) : 0;
+  const time = fmt(Math.min(GAME_SECONDS, Math.floor((Date.now() - G.started) / 1000)));
+  const entry = { name: G.name, score: G.score, acc, time, at: Date.now() };
+  const board = store.get('pp:board', []); board.push(entry); board.sort((a, b) => b.score - a.score || a.time.localeCompare(b.time));
+  store.set('pp:board', board.slice(0, 20));
+  const review = G.list.map((m) => { const r = G.results.find((x) => x.id === m.id);
+    return `<div><span class="${r ? (r.right ? 'ok' : 'no') : 'no'}">${r ? (r.right ? '✓' : '✗') : '–'}</span><span>${esc(m.subject)}</span><small class="label">${m.phish ? 'Phishing' : 'Safe'}</small></div>`; }).join('');
+  $('#app').innerHTML = `
+  <header class="bar"><div class="brand">Phish <span>Patrol</span></div><div class="spacer"></div><span class="label">${G.left <= 0 ? 'Time is up' : 'Patrol complete'}</span></header>
+  <section class="results">
+    <div class="panel">
+      <span class="label">${esc(G.name)}, your rank</span>
+      <div class="rank">${rankFor(acc).split(' ').slice(0, -1).join(' ')} <span>${rankFor(acc).split(' ').slice(-1)}</span></div>
+      <div class="tiles">
+        <div class="tile"><span class="label">Score</span><b>${G.score}</b></div>
+        <div class="tile"><span class="label">Correct calls</span><b>${correct}/${G.list.length}</b></div>
+        <div class="tile"><span class="label">Warning signs found</span><b>${G.flagsFound}/${G.flagsTotal}</b></div>
+        <div class="tile"><span class="label">Time</span><b>${time}</b></div>
+      </div>
+      <div class="row-actions"><button class="btn main big" id="again">Play again</button><button class="btn" id="home">New player</button></div>
+      <div><span class="label">Your emails</span><div class="review" style="margin-top:8px">${review}</div></div>
+    </div>
+    ${leaderboardHTML(entry)}
+  </section>`;
+  $('#again').addEventListener('click', () => newGame(G.name));
+  $('#home').addEventListener('click', renderStart);
+  bindReset();
+}
+
+/* --- leaderboard (this browser only) --- */
+function leaderboardHTML(me) {
+  const board = store.get('pp:board', []);
+  const rows = board.slice(0, 10).map((r, k) => `<tr class="${me && r.at === me.at ? 'me' : ''}"><td>${k + 1}</td><td>${esc(r.name)}</td><td>${r.score}</td><td>${r.acc}%</td><td>${r.time}</td></tr>`).join('');
+  return `<div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <h2 style="font-size:24px">Leaderboard</h2><button class="btn" id="reset" type="button" style="padding:7px 12px;font-size:14px">Reset leaderboard</button>
+    </div>
+    ${rows ? `<div style="overflow-x:auto"><table><thead><tr><th>#</th><th>Player</th><th>Score</th><th>Correct</th><th>Time</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p style="margin:0;color:var(--muted)">No scores yet. Finish a patrol to appear here. Scores are saved on this computer only.</p>'}
+  </div>`;
+}
+function bindReset() {
+  const b = $('#reset'); if (!b) return;
+  let armed = false;
+  b.addEventListener('click', () => {
+    if (!armed) { armed = true; b.textContent = 'Click again to confirm'; setTimeout(() => { armed = false; if (b.isConnected) b.textContent = 'Reset leaderboard'; }, 3000); return; }
+    store.set('pp:board', []); toast('Leaderboard cleared');
+    b.closest('.panel').outerHTML = leaderboardHTML(); bindReset();
+  });
+}
+
+renderStart();
+</script>
+</body>
+</html>
